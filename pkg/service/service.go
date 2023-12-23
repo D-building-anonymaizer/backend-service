@@ -11,6 +11,14 @@ type Service struct {
 	url string
 }
 
+func (s *Service) GetUrl() string {
+	return s.url
+}
+
+func (s *Service) SetUrl(url string) {
+	s.url = url
+}
+
 func (s *Service) RunApp() error {
 	var cmd string
 
