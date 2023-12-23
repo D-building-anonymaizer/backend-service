@@ -2,19 +2,27 @@ package handler
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
+	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
-func (h *Handler) function(c *gin.Context) {
-	c.Writer.Write([]byte("The router is working!"))
+func (h *Handler) Index(c *gin.Context) {
+	t, err := template.ParseFiles("../../build/index.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	t.Execute(c.Writer, "")
 }
 
-func (h *Handler) fileReciever(c *gin.Context) {
+func (h *Handler) FileReciever(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -60,7 +68,9 @@ func (h *Handler) fileReciever(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Return a success message
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("file %s saved to %s", file.Filename, dst)})
+}
+
+func (h *Handler) Exit(c *gin.Context) {
+	h.server.Shutdown(c)
 }
