@@ -1,16 +1,16 @@
 package handler
 
 import (
-	"fmt"
+	"github.com/D-building-anonymaizer/backend-service/pkg/handler/file_workers"
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"html/template"
-	"io"
+	//"github.com/D-building-anonymaizer/backend-service/pkg/mail"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
+	// "encoding/json"
+	// "io"
 )
 
 func (h *Handler) Index(c *gin.Context) {
@@ -23,54 +23,50 @@ func (h *Handler) Index(c *gin.Context) {
 }
 
 func (h *Handler) FileReciever(c *gin.Context) {
+	c.Header("Access-Control-Allow-Origin", "http://127.0.0.1:1337")                                                              // разрешить любой источник
+	c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")                                           // разрешить определенные методы
+	c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Max") // разрешить определенные заголовки
+	c.Header("Access-Control-Allow-Credentials", "true")                                                                          // разрешить отправку куки
 	file, err := c.FormFile("file")
+
+	log.Print(file.Filename)
 	if err != nil {
+		log.Print(err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	s1, s2 := files.SplitFileName(file.Filename)
+	err = c.SaveUploadedFile(file, viper.GetString("InputFolder")+s1+s2)
+	if err != nil {
 
-	ext := filepath.Ext(file.Filename)
-	allowed := viper.GetStringSlice("allowedXt")
-	valid := false
-	for _, a := range allowed {
-		if ext == a {
-			valid = true
-			break
-		}
-	}
-	if !valid {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file format"})
+		log.Print(err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{"message": "Успешно сохранено!"})
 
-	folder := "../.../root"
-	err = os.MkdirAll(folder, 0755)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	dst := filepath.Join(folder, file.Filename)
-	out, err := os.Create(dst)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer out.Close()
-	f, err := file.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer f.Close()
-	_, err = io.Copy(out, f)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("file %s saved to %s", file.Filename, dst)})
 }
 
 func (h *Handler) Exit(c *gin.Context) {
+	files.RemoveContents("../../output/")
 	h.server.Shutdown(c)
+	os.Exit(0)
 }
+
+//Данная функция и пакет mail реализуют готовый к развертыванию и использованию сервис эл. почты.
+//Для использования необходимо наличие домена для налаживания работы с SMTP
+//Инициализация переменных окружения (в т.ч. адресов эл. почты и атрибутов почтового сервиса) находится в файле configs/config.yml
+// func (h *Handler) MailSender(c *gin.Context) {
+// 	var data mail.UData
+// 	body, err := io.ReadAll(c.Request.Body)
+// 	log.Print(body)
+// 	log.Print(c.Request.Body)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	err = json.Unmarshal(body, &data)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	mail.EmailSender(data)
+// }
