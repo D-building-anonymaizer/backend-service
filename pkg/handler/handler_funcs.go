@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sync"
 	// "encoding/json"
 	// "io"
 )
@@ -45,20 +46,69 @@ func (h *Handler) FileReciever(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// Создаем новый подпроцесс с бат-файлом
 	cmd := exec.Command("C:/Users/1/go/src/backend-service/configs/run")
-	err = cmd.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
+
+	wg := new(sync.WaitGroup)
+	// Добавляем одну задачу в WaitGroup
+	wg.Add(1)
+	// Запускаем подпроцесс в отдельной горутине
+	go func() {
+		// Отложенно уменьшаем счетчик задач в WaitGroup
+		defer wg.Done()
+		// Запускаем подпроцесс и получаем ошибку
+		err := cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		// Получаем количество файлов в папке до запуска бат-файла
+		oldcount := count()
+		// Входим в бесконечный цикл
+		for {
+			// Получаем количество файлов в папке после запуска бат-файла
+			newcount := count()
+			// Сравниваем старое и новое количество
+			if newcount != oldcount {
+				// Если они отличаются, значит появился новый файл
+				// Останавливаем бат-файл, убивая его процесс
+				err := cmd.Process.Kill()
+				if err != nil {
+					log.Fatal(err)
+				}
+				// Выходим из цикла
+				break
+			}
+		}
+	}()
+	// Ждем, пока все задачи в WaitGroup не будут выполнены
+	wg.Wait()
 	log.Print("Успешно сохранено!")
 	c.JSON(http.StatusOK, gin.H{"message": str})
 
 }
 
+func count() int {
+	dir, err := os.Open("../../output")
+	if err != nil {
+		log.Fatal(err)
+		return -1
+	}
+	defer dir.Close()
+
+	// Получаем список файлов и папок
+	files, err := dir.Readdir(-1)
+	if err != nil {
+		log.Fatal(err)
+		return -1
+	}
+	return len(files)
+}
+
 func (h *Handler) Exit(c *gin.Context) {
-	//files.RemoveContents("../../output/")
+	files.RemoveContents("../../input/")
 	h.server.Shutdown(c)
 	os.Exit(0)
+
 }
 
 //Данная функция и пакет mail реализуют готовый к развертыванию и использованию сервис эл. почты.
