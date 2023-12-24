@@ -40,6 +40,7 @@ func (s *Service) RunApp() error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

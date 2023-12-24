@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	// "encoding/json"
 	// "io"
 )
@@ -36,19 +37,26 @@ func (h *Handler) FileReciever(c *gin.Context) {
 		return
 	}
 	s1, s2 := files.SplitFileName(file.Filename)
-	err = c.SaveUploadedFile(file, viper.GetString("InputFolder")+s1+s2)
+	str := viper.GetString("InputFolder") + s1 + s2
+	err = c.SaveUploadedFile(file, str)
 	if err != nil {
 
 		log.Print(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Успешно сохранено!"})
+	cmd := exec.Command("C:/Users/1/go/src/backend-service/configs/run")
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print("Успешно сохранено!")
+	c.JSON(http.StatusOK, gin.H{"message": str})
 
 }
 
 func (h *Handler) Exit(c *gin.Context) {
-	files.RemoveContents("../../output/")
+	//files.RemoveContents("../../output/")
 	h.server.Shutdown(c)
 	os.Exit(0)
 }
